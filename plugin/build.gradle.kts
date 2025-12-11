@@ -1,4 +1,5 @@
 import com.android.build.gradle.internal.tasks.factory.dependsOn
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id("com.android.library")
@@ -11,24 +12,16 @@ val pluginName = "GDExtensionAndroidPluginTemplate"
 // TODO: Update value to match your plugin's package name.
 val pluginPackageName = "org.godotengine.plugin.android.gdextension.template"
 
-/**
- * Flag used to specify whether the `plugin.gdextension` config file has libraries for platforms
- * other than Android and can be used by the Godot Editor
- *
- * TODO: Update the flag value based on your plugin's configuration
- */
-val gdextensionSupportsNonAndroidPlatforms = false
-
 android {
     namespace = pluginPackageName
-    compileSdk = 33
+    compileSdk = 36
 
     buildFeatures {
         buildConfig = true
     }
 
     defaultConfig {
-        minSdk = 21
+        minSdk = 24
 
         externalNativeBuild {
             cmake {
@@ -55,13 +48,15 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
     }
 }
 
 dependencies {
-    implementation("org.godotengine:godot:4.3.0.stable")
+    implementation("org.godotengine:godot:4.5.1.stable")
 }
 
 // BUILD TASKS DEFINITION
@@ -117,12 +112,8 @@ val copyAddonsToDemo by tasks.registering(Copy::class) {
     finalizedBy(copyReleaseAARToDemoAddons)
 
     from("export_scripts_template")
-    if (!gdextensionSupportsNonAndroidPlatforms) {
-        exclude("plugin.gdextension")
-    } else {
-        finalizedBy(copyDebugSharedLibs)
-        finalizedBy(copyReleaseSharedLibs)
-    }
+    finalizedBy(copyDebugSharedLibs)
+    finalizedBy(copyReleaseSharedLibs)
     into("demo/addons/$pluginName")
 }
 

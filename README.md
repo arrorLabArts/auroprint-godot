@@ -16,9 +16,11 @@ This repository serves as a quickstart template for building a GDExtension Andro
 * Preconfigured source files for the C++ logic of the plugin: [`plugin/src/main/cpp`](plugin/src/main/cpp)
 
 ## Usage
-**Note:** [Android Studio](https://developer.android.com/studio) is the recommended IDE for 
+**Note:** 
+- [Android Studio](https://developer.android.com/studio) is the recommended IDE for 
 developing Godot Android plugins. 
 You can install the latest version from https://developer.android.com/studio.
+- Java 17 is the minimum required Java version.
 
 To use this template, log in to github and click the green "Use this template" button at the top 
 of the repository page.
@@ -58,18 +60,13 @@ overview of the minimum set of modifications needed:
     * Under the `[libraries]` section, update the names and paths to the generated Android shared 
       libraries
     * Add any other platform your plugin intends to support
-      * **Note:** If your plugin supports platforms other than Android, update the 
-        `gdextensionSupportsNonAndroidPlatforms` flag in [`plugin/build.gradle.kts`](plugin/build.gradle.kts)
-        to `true`. Set it to `false` otherwise
 
 ### Building the C++ bindings
-Build the Android C++ bindings using the following commands. To speed up compilation, add `-jN` at
-the end of the SCons command line where `N` is the number of CPU threads you have on your system.
-The example below uses 4 threads.
+Build the Android C++ bindings using the following commands.
 ```
 cd godot-cpp
-scons platform=android target=template_debug -j4
-scons platform=android target=template_release -j4
+scons platform=android target=template_debug
+scons platform=android target=template_release
 ```
 
 When the command is completed, you should have static libraries stored in `godot-cpp/bin` that
