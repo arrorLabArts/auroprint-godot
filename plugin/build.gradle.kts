@@ -1,16 +1,15 @@
 import com.android.build.gradle.internal.tasks.factory.dependsOn
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.gradle.api.file.RelativePath
 
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
 }
 
-// TODO: Update value to your plugin's name.
-val pluginName = "GDExtensionAndroidPluginTemplate"
+val pluginName = "auroprint"
 
-// TODO: Update value to match your plugin's package name.
-val pluginPackageName = "org.godotengine.plugin.android.gdextension.template"
+val pluginPackageName = "com.madeofcode.auroprint"
 
 android {
     namespace = pluginPackageName
@@ -57,6 +56,12 @@ android {
 
 dependencies {
     implementation("org.godotengine:godot:4.5.1.stable")
+
+    // AndroidX
+    implementation("androidx.core:core-ktx:1.12.0")
+
+    // Google Play Integrity API
+    implementation("com.google.android.play:integrity:1.3.0")
 }
 
 // BUILD TASKS DEFINITION
@@ -70,7 +75,7 @@ val copyGdExtensionConfigToAssets by tasks.registering(Copy::class) {
     dependsOn(cleanAssetsAddons)
 
     from("export_scripts_template")
-    include("plugin.gdextension")
+    include("auroprint.gdextension")
     into("src/main/assets/addons/$pluginName")
 }
 
@@ -90,14 +95,28 @@ val copyReleaseAARToDemoAddons by tasks.registering(Copy::class) {
 
 val copyDebugSharedLibs by tasks.registering(Copy::class) {
     description = "Copies the generated debug .so shared library to the plugin's addons directory"
-    from("build/intermediates/cmake/debug/obj")
-    into("demo/addons/$pluginName/bin/debug")
+    from("build/intermediates/cxx/Debug") {
+        include("**/obj/**/libauroprint.so")
+        eachFile {
+            // Flatten the directory structure to match expected paths
+            relativePath = RelativePath(true, relativePath.segments.last())
+        }
+    }
+    includeEmptyDirs = false
+    into("demo/addons/$pluginName/bin/debug/arm64-v8a")
 }
 
 val copyReleaseSharedLibs by tasks.registering(Copy::class) {
     description = "Copies the generated release .so shared library to the plugin's addons directory"
-    from("build/intermediates/cmake/release/obj")
-    into("demo/addons/$pluginName/bin/release")
+    from("build/intermediates/cxx/RelWithDebInfo") {
+        include("**/obj/**/libauroprint.so")
+        eachFile {
+            // Flatten the directory structure to match expected paths
+            relativePath = RelativePath(true, relativePath.segments.last())
+        }
+    }
+    includeEmptyDirs = false
+    into("demo/addons/$pluginName/bin/release/arm64-v8a")
 }
 
 val cleanDemoAddons by tasks.registering(Delete::class) {

@@ -1,135 +1,518 @@
-# GDExtension Android Plugin Template
-This repository serves as a quickstart template for building a GDExtension Android plugin for Godot 
-4.2+.
+# Auroprint - Hardware-Backed Device Fingerprinting for Godot
 
-## Contents
-* [godot-cpp](godot-cpp) submodule for the GDExtension C++ bindings
-* An illustrative simple Godot project: [`plugin/demo`](plugin/demo)
-* Preconfigured gradle build file to build and package the contents for the Android plugin: 
-  [`plugin/build.gradle.kts`](plugin/build.gradle.kts)
-* Preconfigured export scripts template: 
-  [`plugin/export_scripts_template`](plugin/export_scripts_template)
-* Preconfigured manifest for the Android plugin:
-  [`plugin/src/main/AndroidManifest.xml`](plugin/src/main/AndroidManifest.xml)
-* Preconfigured source files for the Kotlin/Java logic of the Android plugin: 
-  [`plugin/src/main/java`](plugin/src/main/java)
-* Preconfigured source files for the C++ logic of the plugin: [`plugin/src/main/cpp`](plugin/src/main/cpp)
+**Auroprint** is a GDExtension Android plugin for Godot 4.2+ that provides cryptographically secure device fingerprinting using Android's hardware-backed keystore (TEE/StrongBox).
 
-## Usage
-**Note:** 
-- [Android Studio](https://developer.android.com/studio) is the recommended IDE for 
-developing Godot Android plugins. 
-You can install the latest version from https://developer.android.com/studio.
-- Java 17 is the minimum required Java version.
+## What is Auroprint?
 
-To use this template, log in to github and click the green "Use this template" button at the top 
-of the repository page.
-This will let you create a copy of this repository with a clean git history.
+Auroprint generates a unique, unforgeable device fingerprint by combining:
+- **Persistent Device ID**: Generated from hardware characteristics and MediaDRM
+- **Cryptographic Signatures**: Signed using keys stored in Android's hardware security module
+- **Attestation Chains**: Certificate chains proving the key is hardware-backed
+- **Play Integrity API**: Optional integration for Google Play Integrity tokens
 
-Once the project is cloned to your local machine, run the following command in the project root 
-directory to initialize the `godot-cpp` submodule:
+Unlike software-based fingerprinting methods that can be spoofed, Auroprint leverages the Trusted Execution Environment (TEE) or StrongBox security chip in modern Android devices to create tamper-proof device identities.
+
+## Why Use Auroprint?
+
+### Use Cases
+- **Anti-Cheat Systems**: Detect and ban devices (not just accounts) used for cheating
+- **Device Authentication**: Verify device identity for secure backend operations
+- **Fraud Prevention**: Identify devices involved in fraudulent activities
+- **License Enforcement**: Tie licenses to specific hardware
+- **Analytics**: Track unique devices without relying on user accounts
+
+### Key Features
+- Hardware-backed cryptographic security (TEE/StrongBox)
+- Unforgeable device signatures with attestation proof
+- Persistent device IDs that survive app reinstalls
+- Optional Google Play Integrity token support
+- Zero permissions required (only INTERNET for Play Integrity)
+- Works on physical devices with hardware keystore (Android 6.0+)
+
+## How It Works
+
+### Architecture
+
 ```
+┌─────────────────────────────────────────────────┐
+│           Godot Game (GDScript)                 │
+│  auroprint.generate_auroprint()                 │
+└────────────────┬────────────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────────────┐
+│       C++ GDExtension Layer                     │
+│  - Auroprint singleton                          │
+│  - Signal-based async API                       │
+│  - JNI bridge to Kotlin                         │
+└────────────────┬────────────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────────────┐
+│       Kotlin/Java Layer                         │
+│  - AuroprintCore (crypto logic)                 │
+│  - AuroprintPluginSync (JNI wrapper)            │
+└────────────────┬────────────────────────────────┘
+                 │
+                 ▼
+┌─────────────────────────────────────────────────┐
+│    Android Keystore (Hardware)                  │
+│  - TEE or StrongBox                             │
+│  - RSA 2048 key generation                      │
+│  - SHA256withRSA signatures                     │
+│  - Attestation certificate chains               │
+└─────────────────────────────────────────────────┘
+```
+
+### Device ID Generation
+
+The device ID is a cryptographic hash combining:
+1. **MediaDRM Widevine ID** (persistent across factory resets on most devices)
+2. **Hardware Properties**: Board, bootloader, brand, device, manufacturer, model, SoC
+3. **Display Metrics**: Screen resolution and DPI
+
+### Cryptographic Security
+
+1. **Key Generation**: 2048-bit RSA key pair generated in Android Keystore
+   - On devices with StrongBox (Pixel 3+, S9+): Uses dedicated security chip
+   - On devices with TEE (Android 6.0+): Uses Trusted Execution Environment
+   - Keys **never leave** the secure hardware
+
+2. **Attestation**: Certificate chains prove the key is hardware-backed
+   - Chain contains 3-5 certificates from device → manufacturer → Google
+   - Verifiable by your backend to confirm hardware security
+
+3. **Signing**: Payload is signed using SHA256withRSA
+   - Signature can only be created by the specific device
+   - Payload includes device ID, timestamp, and random nonce
+
+## Integration Guide
+
+### Prerequisites
+
+- Godot 4.2 or higher
+- Android 6.0+ target device with hardware keystore
+- Physical device (not emulator) for hardware-backed features
+
+### Step 1: Build the Plugin
+
+```bash
+# Clone or download this repository
+cd auroprint-godot-plugin
+
+# Initialize godot-cpp submodule
 git submodule update --init
-```
 
-### Configuring the template
-Several `TODO` have been added to the project to help identify where changes are needed; here's an 
-overview of the minimum set of modifications needed:
-* Update the name of the Android plugin. Note that the name should not contain any spaces:
-  * Open [`settings.gradle.kts`](settings.gradle.kts) and update the value for `rootProject.name`
-  * Open [`plugin/build.gradle.kts`](plugin/build.gradle.kts) and update the value for `pluginName`
-  * Open [`plugin/CMakeLists.txt`](plugin/CMakeLists.txt) and update the value for the CMake project
-  * Open [`plugin/export_scripts_template/plugin.cfg`](plugin/export_scripts_template/plugin.cfg)
-    and update the value for `name`
-  * Open [`plugin/export_scripts_template/export_plugin.gd`](plugin/export_scripts_template/export_plugin.gd)
-    and update the value for `_plugin_name`
-* Update the package name of the Android plugin:
-  * Open [`plugin/build.gradle.kts`](plugin/build.gradle.kts) and update the value for `pluginPackageName`
-  * Make sure subdirectories under [`plugin/src/main/java`](plugin/src/main/java) match the 
-    updated package name
-  * Make sure that `package` at the top of [`GDExtensionAndroidPlugin.kt`](plugin/src/main/java/org/godotengine/plugin/android/gdextension/template/GDExtensionAndroidPlugin.kt)
-    matches the updated package name
-  * Make sure that `JNI_PACKAGE_NAME` in [`plugin/src/main/cpp/plugin_jni.cpp`](plugin/src/main/cpp/plugin_jni.cpp)
-    is updated accordingly
-* Complete the plugin configuration
-  * Open [`plugin/export_scripts_template/plugin.cfg`](plugin/export_scripts_template/plugin.cfg)
-    * Update the `description` field
-    * Update the `author` field
-    * Update the `version` field
-  * Open [`plugin/export_scripts_template/plugin.gdextension`](plugin/export_scripts_template/plugin.gdextension)
-    * Under the `[libraries]` section, update the names and paths to the generated Android shared 
-      libraries
-    * Add any other platform your plugin intends to support
-
-### Building the C++ bindings
-Build the Android C++ bindings using the following commands.
-```
+# Build godot-cpp for Android
 cd godot-cpp
 scons platform=android target=template_debug
 scons platform=android target=template_release
+cd ..
+
+# Build the plugin
+./gradlew clean assemble
 ```
 
-When the command is completed, you should have static libraries stored in `godot-cpp/bin` that
-will be used for compilation by the plugin.
+The built plugin will be in `plugin/demo/addons/auroprint/`
 
-### Building the configured Android plugin
-- In a terminal window, navigate to the project's root directory and run the following command:
-```
-./gradlew assemble
-```
-- On successful completion of the build, the output files can be found in
-  [`plugin/demo/addons`](plugin/demo/addons)
+### Step 2: Copy Plugin to Your Project
 
-### Testing the Android plugin
-You can use the included [Godot demo project](plugin/demo/project.godot) to test the built Android 
-plugin
-
-- Open the demo in Godot (4.2 or higher)
-- Navigate to `Project` -> `Project Settings...` -> `Plugins`, and ensure the plugin is enabled
-- Install the Godot Android build template by clicking on `Project` -> `Install Android Build Template...`
-- Open [`plugin/demo/main.gd`](plugin/demo/main.gd) and update the logic as needed to reference 
-  your plugin and its methods
-- Connect an Android device to your machine and run the demo on it
-
-#### Tips
-
-##### Simplify access to the exposed Java / Kotlin APIs
-
-To make it easier to access the exposed Java / Kotlin APIs in the Godot Editor, it's recommended to
-provide one (or multiple) gdscript wrapper class(es) for your plugin users to interface with.
-
-For example:
+Copy the entire `plugin/demo/addons/auroprint/` directory to your Godot project's `addons/` folder:
 
 ```
-class_name PluginInterface extends Object
-
-## Interface used to access the functionality provided by this plugin
-
-var _plugin_name = "GDExtensionAndroidPluginTemplate"
-var _plugin_singleton
-
-func _init():
-	if Engine.has_singleton(_plugin_name):
-		_plugin_singleton = Engine.get_singleton(_plugin_name)
-	else:
-		printerr("Initialization error: unable to access the java logic")
-
-## Print a 'Hello World' message to the logcat.
-func helloWorld():
-	if _plugin_singleton:
-		_plugin_singleton.helloWorld()
-	else:
-		printerr("Initialization error")
-
+your-godot-project/
+├── addons/
+│   └── auroprint/
+│       ├── bin/
+│       │   ├── debug/
+│       │   │   └── auroprint-debug.aar
+│       │   └── release/
+│       │       └── auroprint-release.aar
+│       ├── auroprint.gdextension
+│       └── plugin.cfg
 ```
 
-##### Support using the gdextension functionality in the Godot Editor
+### Step 3: Enable the Plugin
 
-If planning to use the gdextension functionality in the Godot Editor, it is recommended that the 
-gdextension's native binaries are compiled not just for Android, but also for the OS onto which 
-developers / users intend to run the Godot Editor. Not doing so may prevent developers / 
-users from writing code that accesses the plugin from within the Godot Editor.
+1. Open your project in Godot
+2. Go to `Project → Project Settings → Plugins`
+3. Enable the **Auroprint** plugin
 
-This may involve creating dummy plugins for the host OS just so the API is published to the 
-editor. You can use the [godot-cpp-template](https://github.com/godotengine/godot-cpp-template) 
-github template for reference on how to do so.
+### Step 4: Configure Android Export
+
+1. Install Android build template: `Project → Install Android Build Template`
+2. Open `Project → Export → Android`
+3. In the export preset, ensure:
+   - `Gradle Build/Use Gradle Build` is **enabled**
+   - Under `Plugins`, **Auroprint** is **checked**
+   - `GDExtension/Export All` is **enabled**
+4. For Play Integrity support, add `INTERNET` permission in export settings
+
+### Step 5: Use in GDScript
+
+```gdscript
+extends Node
+
+var auroprint: Object
+
+func _ready():
+    # Get the Auroprint singleton
+    if Engine.has_singleton("Auroprint"):
+        auroprint = Engine.get_singleton("Auroprint")
+        print("Auroprint plugin loaded successfully")
+
+        # Connect signals
+        auroprint.auroprint_generated.connect(_on_auroprint_generated)
+        auroprint.auroprint_error.connect(_on_auroprint_error)
+
+        # Generate auroprint
+        auroprint.generate_auroprint()
+    else:
+        push_error("Auroprint plugin not available")
+
+func _on_auroprint_generated(result: AuroprintResult):
+    print("Device ID: ", result.get_device_id())
+    print("Payload: ", result.get_payload())
+    print("Signature: ", result.get_signature())
+    print("Public Key: ", result.get_public_key())
+    print("Attestation Chain Length: ", result.get_attestation_chain().size())
+    print("Timestamp: ", result.get_timestamp())
+    print("Nonce: ", result.get_nonce())
+    print("Hardware Backed: ", result.get_is_hardware_backed())
+
+    # Send to your backend for verification
+    send_to_backend(result.to_dictionary())
+
+func _on_auroprint_error(error_message: String):
+    push_error("Auroprint error: " + error_message)
+
+func send_to_backend(data: Dictionary):
+    # Example: Send to your server
+    var http = HTTPRequest.new()
+    add_child(http)
+    http.request("https://your-backend.com/verify-device",
+                 ["Content-Type: application/json"],
+                 HTTPClient.METHOD_POST,
+                 JSON.stringify(data))
+```
+
+## API Reference
+
+### Singleton: `Auroprint`
+
+Access via: `Engine.get_singleton("Auroprint")`
+
+All methods are **asynchronous** and return results via signals.
+
+---
+
+#### `generate_auroprint()`
+
+Generates a complete device fingerprint with signature and attestation.
+
+**Parameters**: None
+
+**Returns**: Emits signal `auroprint_generated` with `AuroprintResult` on success, or `auroprint_error` with error message on failure.
+
+**Example**:
+```gdscript
+auroprint.auroprint_generated.connect(_on_generated)
+auroprint.auroprint_error.connect(_on_error)
+auroprint.generate_auroprint()
+```
+
+---
+
+#### `is_hardware_backed_available()`
+
+Checks if the device supports hardware-backed keystore.
+
+**Parameters**: None
+
+**Returns**: Emits signal `hardware_backed_result` with `bool` value.
+
+**Example**:
+```gdscript
+auroprint.hardware_backed_result.connect(_on_hw_check)
+auroprint.is_hardware_backed_available()
+
+func _on_hw_check(available: bool):
+    if available:
+        print("Hardware-backed keystore is available")
+    else:
+        print("Device does not support hardware-backed keystore")
+```
+
+---
+
+#### `reset_key()`
+
+Deletes the current signing key. The next call to `generate_auroprint()` will create a new key.
+
+**Parameters**: None
+
+**Returns**: Emits signal `key_reset_complete` on success, or `auroprint_error` on failure.
+
+**Example**:
+```gdscript
+auroprint.key_reset_complete.connect(_on_reset)
+auroprint.reset_key()
+
+func _on_reset():
+    print("Signing key has been reset")
+```
+
+**Use Cases**:
+- Testing different device fingerprints
+- Allowing users to "unlink" their device
+- Recovering from corrupted key states
+
+---
+
+#### `request_integrity_token(nonce: String, cloud_project_number: int)`
+
+Requests a Google Play Integrity token. Requires `INTERNET` permission.
+
+**Parameters**:
+- `nonce` (String): Base64-encoded nonce for the integrity request
+- `cloud_project_number` (int): Your Google Cloud project number (optional, pass 0 to omit)
+
+**Returns**: Emits signal `integrity_token_received` with token String on success, or `integrity_token_error` with error message on failure.
+
+**Example**:
+```gdscript
+auroprint.integrity_token_received.connect(_on_token)
+auroprint.integrity_token_error.connect(_on_token_error)
+
+var nonce = "your-base64-nonce"
+var project_number = 123456789  # Your Google Cloud project number
+auroprint.request_integrity_token(nonce, project_number)
+
+func _on_token(token: String):
+    print("Integrity Token: ", token)
+    # Send to your backend for verification
+```
+
+**Requirements**:
+- App must be published on Google Play (at least internal testing track)
+- Play Integrity API must be enabled in Google Cloud Console
+- Device must have Google Play Services
+
+---
+
+### Signals
+
+| Signal | Parameters | Description |
+|--------|-----------|-------------|
+| `auroprint_generated` | `AuroprintResult` | Emitted when fingerprint generation succeeds |
+| `auroprint_error` | `String` error_message | Emitted when any operation fails |
+| `hardware_backed_result` | `bool` available | Emitted with hardware availability status |
+| `key_reset_complete` | None | Emitted when key reset succeeds |
+| `integrity_token_received` | `String` token | Emitted when Play Integrity token is received |
+| `integrity_token_error` | `String` error_message | Emitted when integrity token request fails |
+
+---
+
+### Class: `AuroprintResult`
+
+Result object containing device fingerprint data. Inherits from `RefCounted`.
+
+#### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `device_id` | String | Unique device identifier (SHA-256 hash) |
+| `payload` | String | JSON payload containing device ID, timestamp, and nonce |
+| `signature` | String | Base64-encoded RSA signature of the payload |
+| `public_key` | String | PEM-encoded public key certificate |
+| `attestation_chain` | Array[String] | Array of PEM-encoded attestation certificates |
+| `timestamp` | int | Unix timestamp (seconds) when fingerprint was generated |
+| `nonce` | String | Random nonce included in the payload |
+| `is_hardware_backed` | bool | Whether the signing key is hardware-backed |
+
+#### Methods
+
+##### Getters
+
+```gdscript
+get_device_id() -> String
+get_payload() -> String
+get_signature() -> String
+get_public_key() -> String
+get_attestation_chain() -> Array
+get_timestamp() -> int
+get_nonce() -> String
+get_is_hardware_backed() -> bool
+```
+
+##### `to_dictionary() -> Dictionary`
+
+Converts the result to a Dictionary for easy JSON serialization.
+
+**Example**:
+```gdscript
+func _on_auroprint_generated(result: AuroprintResult):
+    var data = result.to_dictionary()
+    # {
+    #   "deviceId": "a1b2c3...",
+    #   "payload": "{\"did\":\"a1b2c3...\",\"ts\":1704844800,\"nonce\":\"...\"}",
+    #   "signature": "Base64String...",
+    #   "publicKey": "-----BEGIN CERTIFICATE-----\n...",
+    #   "attestationChain": ["-----BEGIN CERTIFICATE-----\n...", ...],
+    #   "timestamp": 1704844800,
+    #   "nonce": "32charhexstring",
+    #   "isHardwareBacked": true
+    # }
+
+    var json = JSON.stringify(data)
+    send_to_backend(json)
+```
+
+---
+
+## Backend Verification
+
+To verify an auroprint on your backend:
+
+1. **Verify Signature**:
+   ```python
+   from cryptography.hazmat.primitives import hashes, serialization
+   from cryptography.hazmat.primitives.asymmetric import padding
+   import base64
+
+   # Load public key from PEM
+   public_key = serialization.load_pem_public_key(
+       result['publicKey'].encode()
+   )
+
+   # Verify signature
+   signature_bytes = base64.b64decode(result['signature'])
+   payload_bytes = result['payload'].encode('utf-8')
+
+   public_key.verify(
+       signature_bytes,
+       payload_bytes,
+       padding.PKCS1v15(),
+       hashes.SHA256()
+   )
+   # If no exception, signature is valid
+   ```
+
+2. **Verify Attestation Chain** (Optional but Recommended):
+   - Parse the certificate chain
+   - Verify each certificate is signed by the next
+   - Check root certificate is from Google or device manufacturer
+   - Verify attestation extension proves hardware backing
+
+3. **Store Device ID**:
+   - Save `deviceId` in your database
+   - Associate with user account if applicable
+   - Track for anti-cheat, fraud detection, etc.
+
+4. **Check Timestamp & Nonce**:
+   - Verify timestamp is recent (prevent replay attacks)
+   - Ensure nonce hasn't been used before
+
+---
+
+## Troubleshooting
+
+### "Auroprint plugin not available"
+
+**Cause**: Plugin not loaded by Godot
+
+**Solutions**:
+1. Ensure plugin is enabled in `Project → Project Settings → Plugins`
+2. Verify `auroprint.gdextension` exists in `addons/auroprint/`
+3. Check export preset has **Auroprint** plugin checked
+4. Confirm `GDExtension/Export All` is enabled in export settings
+5. Clear Godot export cache: delete `android/build` and `.godot/exported`
+
+### Attestation chain length is 0
+
+**Cause**: Using desktop stub instead of Android implementation
+
+**Solutions**:
+1. Ensure you're running on a **physical Android device** (not desktop or emulator)
+2. Verify `ANDROID_ENABLED` flag is defined in CMakeLists.txt
+3. Rebuild plugin with `./gradlew clean assemble`
+4. Copy fresh AAR files to your project
+5. Clear build caches before testing
+
+### "Hardware-backed keystore not available"
+
+**Cause**: Device doesn't support TEE/StrongBox
+
+**Solutions**:
+- Requires Android 6.0+ with hardware-backed keystore
+- Emulators don't support hardware backing
+- Very old devices may not have TEE
+- Fingerprint will still work, but attestation chain may be shorter/weaker
+
+### Play Integrity token errors
+
+**Common Issues**:
+1. **App not published**: Must be on at least internal testing track
+2. **API not enabled**: Enable Play Integrity API in Google Cloud Console
+3. **No Google Play Services**: Device must have Play Services installed
+4. **Missing INTERNET permission**: Add in Android export settings
+
+---
+
+## Security Considerations
+
+### What Auroprint Provides
+- Cryptographically unforgeable device signatures
+- Hardware-backed key storage (keys never exposed)
+- Attestation proof of hardware security
+- Persistent device identification
+
+### What Auroprint Does NOT Provide
+- **Anti-root/jailbreak detection**: Rooted devices can still generate valid fingerprints
+- **Emulator detection**: Use Play Integrity API for that
+- **Network security**: Always use HTTPS when transmitting fingerprints
+- **User privacy protection**: Fingerprints are persistent across app reinstalls
+
+### Privacy Compliance
+
+Device fingerprinting may be subject to privacy regulations (GDPR, CCPA, etc.):
+- Inform users about device fingerprinting in your privacy policy
+- Consider requiring user consent before fingerprinting
+- Provide opt-out mechanisms if required by your jurisdiction
+- Don't use fingerprints for purposes beyond stated use cases
+
+---
+
+## Platform Support
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| Android 6.0+ (Physical) | ✅ Fully Supported | Hardware-backed keystore with TEE |
+| Android 9.0+ (StrongBox) | ✅ Enhanced Security | Dedicated security chip |
+| Android Emulator | ⚠️ Limited | No hardware backing, shorter attestation chains |
+| iOS | ❌ Not Supported | Future implementation planned |
+| Desktop (Windows/Mac/Linux) | ⚠️ Stub Only | Returns mock data for testing |
+
+---
+
+## License
+
+[Add your license here]
+
+---
+
+## Credits
+
+- **Author**: [Your Name/Organization]
+- **Based on**: Godot GDExtension Android Plugin Template by Fredia Huya-Kouadio
+- **Android Keystore**: Uses Android's hardware security module APIs
+- **Play Integrity**: Google Play Integrity API integration
+
+---
+
+## Support
+
+For issues, questions, or contributions:
+- Report bugs at [repository issue tracker]
+- Documentation: This README
+- Godot Forums: [link if applicable]

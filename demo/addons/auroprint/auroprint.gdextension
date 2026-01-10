@@ -1,0 +1,11 @@
+[configuration]
+
+entry_symbol = "plugin_library_init"
+compatibility_minimum = "4.2"
+android_aar_plugin = true
+
+[libraries]
+
+# Hybrid approach: AAR contains the library, but GDExtension also needs direct .so access
+android.debug.arm64 = "res://addons/auroprint/bin/debug/arm64-v8a/libauroprint.so"
+android.release.arm64 = "res://addons/auroprint/bin/release/arm64-v8a/libauroprint.so"

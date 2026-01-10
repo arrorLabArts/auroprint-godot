@@ -1,0 +1,1 @@
+This suggests the .gdextension configuration file might not be in the exported APK, or GDExtension can't read it for some reason.

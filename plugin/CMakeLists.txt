@@ -64,8 +64,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# TODO: Update cmake project's name.
-project(GDExtensionAndroidPluginTemplate LANGUAGES CXX)
+project(auroprint LANGUAGES CXX)
 
 set(GODOT_COMPILE_FLAGS)
 set(GODOT_LINKER_FLAGS)
@@ -92,6 +91,11 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
 else ()
     set(GODOT_COMPILE_FLAGS "${GODOT_COMPILE_FLAGS} -O3")
 endif (CMAKE_BUILD_TYPE MATCHES Debug)
+
+# Define ANDROID_ENABLED for Android builds
+if (CMAKE_SYSTEM_NAME STREQUAL "Android")
+    set(GODOT_COMPILE_FLAGS "${GODOT_COMPILE_FLAGS} -DANDROID_ENABLED")
+endif ()
 
 
 ## godot-cpp library
