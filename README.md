@@ -148,7 +148,26 @@ your-godot-project/
    - `GDExtension/Export All` is **enabled**
 4. For Play Integrity support, add `INTERNET` permission in export settings
 
-### Step 5: Use in GDScript
+### Step 5: Add Play Integrity Dependency (Required for Play Integrity API)
+
+If you plan to use the Play Integrity token feature, you must add the Play Integrity dependency to your project's Android build configuration:
+
+1. Open `android/build/build.gradle` in your Godot project
+2. Find the `dependencies` section
+3. Add the following line:
+
+```gradle
+dependencies {
+    // ... existing dependencies ...
+
+    // Required for Auroprint Play Integrity API support
+    implementation 'com.google.android.play:integrity:1.3.0'
+}
+```
+
+**Note**: This step is only required if you use `request_integrity_token()`. Device fingerprinting works without this dependency.
+
+### Step 6: Use in GDScript
 
 ```gdscript
 extends Node
@@ -448,6 +467,21 @@ To verify an auroprint on your backend:
 - Emulators don't support hardware backing
 - Very old devices may not have TEE
 - Fingerprint will still work, but attestation chain may be shorter/weaker
+
+### NoClassDefFoundError: IntegrityManagerFactory
+
+**Error**: `java.lang.NoClassDefFoundError: Failed resolution of: Lcom/google/android/play/core/integrity/IntegrityManagerFactory;`
+
+**Cause**: Play Integrity API dependency not included in your Godot project's APK
+
+**Solution**: Add the dependency to your project's `android/build/build.gradle`:
+```gradle
+dependencies {
+    implementation 'com.google.android.play:integrity:1.3.0'
+}
+```
+
+See **Step 5** in the integration guide above for full details.
 
 ### Play Integrity token errors
 

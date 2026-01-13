@@ -119,14 +119,47 @@ class AuroprintCore(private val context: Context) {
         val task = integrityManager.requestIntegrityToken(requestBuilder.build())
 
         // Wait for result (this blocks, so must be called from background thread)
-        while (!task.isComplete) {
+        var waitTime = 0
+        val maxWaitTime = 30000 // 30 seconds timeout
+        while (!task.isComplete && waitTime < maxWaitTime) {
             Thread.sleep(50)
+            waitTime += 50
+        }
+
+        if (!task.isComplete) {
+            throw Exception("Play Integrity token request timed out after ${maxWaitTime}ms. This could indicate:\n" +
+                    "  - Network connectivity issues\n" +
+                    "  - Google Play Services not responding\n" +
+                    "  - Device is offline")
         }
 
         if (task.isSuccessful) {
             return task.result.token()
         } else {
-            throw task.exception ?: Exception("Unknown integrity token error")
+            val exception = task.exception
+            val errorMessage = when {
+                exception == null -> "Unknown Play Integrity API error (null exception)"
+                exception.message != null -> exception.message!!
+                else -> exception.javaClass.simpleName
+            }
+
+            // Provide helpful context based on common error patterns
+            val detailedMessage = buildString {
+                append("Play Integrity API error: $errorMessage\n")
+                append("Common causes:\n")
+                append("  - App not linked to Google Cloud project in Play Console\n")
+                append("  - Play Integrity API not enabled in Google Cloud Console\n")
+                append("  - App not uploaded to Play Console (must be in at least internal testing)\n")
+                append("  - Device does not have Google Play Services installed\n")
+                append("  - Package name mismatch between app and Play Console\n")
+                append("  - Invalid or empty nonce provided\n")
+                append("  - Cloud project number is incorrect or not set\n")
+                if (exception != null) {
+                    append("\nOriginal exception: ${exception.javaClass.name}")
+                }
+            }
+
+            throw Exception(detailedMessage, exception)
         }
     }
 

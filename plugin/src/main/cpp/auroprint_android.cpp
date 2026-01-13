@@ -130,6 +130,46 @@ Array AuroprintAndroid::jobject_list_to_array(JNIEnv* env, jobject list) {
     return result;
 }
 
+String AuroprintAndroid::get_jni_exception_message(JNIEnv* env) {
+    if (!env->ExceptionCheck()) {
+        return "No exception occurred";
+    }
+
+    // Print exception to logcat (safe to call with pending exception)
+    LOGE("Java exception occurred - printing to logcat:");
+    env->ExceptionDescribe();
+
+    // Get the exception object
+    jthrowable exception = env->ExceptionOccurred();
+    if (!exception) {
+        return "Exception occurred but could not be retrieved";
+    }
+
+    // Clear the exception so we can safely make JNI calls
+    env->ExceptionClear();
+
+    // Now it's safe to call toString() on the exception
+    jclass exception_class = env->GetObjectClass(exception);
+    jmethodID to_string = env->GetMethodID(exception_class, "toString", "()Ljava/lang/String;");
+
+    String result = "Unknown exception";
+    if (to_string) {
+        jstring exception_string = static_cast<jstring>(env->CallObjectMethod(exception, to_string));
+        if (exception_string) {
+            result = jstring_to_godot_string(env, exception_string);
+            env->DeleteLocalRef(exception_string);
+        }
+    }
+
+    // Clean up
+    env->DeleteLocalRef(exception_class);
+    env->DeleteLocalRef(exception);
+
+    LOGE("Exception details: %s", result.utf8().get_data());
+
+    return result;
+}
+
 Ref<AuroprintResult> AuroprintAndroid::jobject_to_auroprint_result(JNIEnv* env, jobject result_obj) {
     Ref<AuroprintResult> result;
     result.instantiate();
@@ -403,12 +443,12 @@ String Auroprint::_platform_request_integrity_token(const String &nonce, int64_t
     jstring result_str = static_cast<jstring>(env->CallObjectMethod(plugin, method, jnonce, jcloud_num));
 
     if (env->ExceptionCheck()) {
-        env->ExceptionDescribe();
+        String exception_msg = AuroprintAndroid::get_jni_exception_message(env);
         env->ExceptionClear();
         env->DeleteLocalRef(jnonce);
         env->DeleteLocalRef(plugin_class);
         env->DeleteLocalRef(plugin);
-        throw std::runtime_error("Exception occurred while requesting integrity token");
+        throw std::runtime_error(("Exception occurred while requesting integrity token: " + exception_msg).utf8().get_data());
     }
 
     String result = AuroprintAndroid::jstring_to_godot_string(env, result_str);

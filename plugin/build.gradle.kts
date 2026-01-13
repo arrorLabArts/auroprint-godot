@@ -60,8 +60,8 @@ dependencies {
     // AndroidX
     implementation("androidx.core:core-ktx:1.12.0")
 
-    // Google Play Integrity API
-    implementation("com.google.android.play:integrity:1.3.0")
+    // Google Play Integrity API - use 'api' to expose to consuming apps
+    api("com.google.android.play:integrity:1.3.0")
 }
 
 // BUILD TASKS DEFINITION

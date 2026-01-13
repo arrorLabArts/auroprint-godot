@@ -27,6 +27,9 @@ public:
     static Ref<AuroprintResult> jobject_to_auroprint_result(JNIEnv* env, jobject result_obj);
     static Array jobject_list_to_array(JNIEnv* env, jobject list);
 
+    // Exception handling helpers
+    static String get_jni_exception_message(JNIEnv* env);
+
     // Kotlin plugin interface
     static jobject get_kotlin_plugin_instance(JNIEnv* env);
 };
