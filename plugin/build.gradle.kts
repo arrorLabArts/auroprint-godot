@@ -95,6 +95,7 @@ val copyReleaseAARToDemoAddons by tasks.registering(Copy::class) {
 
 val copyDebugSharedLibs by tasks.registering(Copy::class) {
     description = "Copies the generated debug .so shared library to the plugin's addons directory"
+    dependsOn("buildCMakeDebug[arm64-v8a]")
     from("build/intermediates/cxx/Debug") {
         include("**/obj/**/libauroprint.so")
         eachFile {
@@ -108,6 +109,7 @@ val copyDebugSharedLibs by tasks.registering(Copy::class) {
 
 val copyReleaseSharedLibs by tasks.registering(Copy::class) {
     description = "Copies the generated release .so shared library to the plugin's addons directory"
+    dependsOn("buildCMakeRelWithDebInfo[arm64-v8a]")
     from("build/intermediates/cxx/RelWithDebInfo") {
         include("**/obj/**/libauroprint.so")
         eachFile {

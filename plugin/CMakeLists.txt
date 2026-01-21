@@ -69,7 +69,7 @@ project(auroprint LANGUAGES CXX)
 set(GODOT_COMPILE_FLAGS)
 set(GODOT_LINKER_FLAGS)
 
-set(GODOT_LINKER_FLAGS "-Wl")
+set(GODOT_LINKER_FLAGS "-Wl,-z,max-page-size=16384")
 
 set(GODOT_COMPILE_FLAGS "-fPIC -g -Wwrite-strings")
 set(GODOT_COMPILE_FLAGS "${GODOT_COMPILE_FLAGS} -Wchar-subscripts -Wcomment -Wdisabled-optimization")

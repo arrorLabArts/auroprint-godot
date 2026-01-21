@@ -17,7 +17,8 @@ func _exit_tree():
 
 
 class AndroidExportPlugin extends EditorExportPlugin:
-	var _plugin_name = "auroprint"
+	# TODO: Update to your plugin's name.
+	var _plugin_name = "GDExtensionAndroidPluginTemplate"
 
 	func _supports_platform(platform):
 		if platform is EditorExportPlatformAndroid:
